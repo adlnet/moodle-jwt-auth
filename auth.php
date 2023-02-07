@@ -15,10 +15,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Anobody can login with any password.
+ * Auth using a JWT on a protected Moodle instance.
  *
  * @package auth_jwt
- * @author Martin Dougiamas
+ * @author Trey Hayden <trey.hayden.ctr@adlnet.gov>
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
  */
 
@@ -68,7 +68,7 @@ class auth_plugin_jwt extends auth_plugin_base {
             }
         }
 
-        echo('Payload Decoded: ' . print_r($authtoken, true));
+        // echo('Payload Decoded: ' . print_r($authtoken, true));
 
         if (!isset($authtoken))
             return;
@@ -81,13 +81,27 @@ class auth_plugin_jwt extends auth_plugin_base {
 
         $payload = $this->parse_jwt_component($payloadEncoded);
 
-        echo('Payload Encoded: ' . print_r($payloadEncoded, true));
-        echo('Payload Decoded: ' . print_r($payload, true));
+        // Ensure that this token actually came from our expected
+        // issuer and has the proper client ID
+        //
+        $issuer = $payload->iss;
+        $client = $payload->azp;
+
+        $issuerExpected = getenv("MOODLE_JWT_ISSUER");
+        if ($issuer != $issuerExpected)
+            return;
+
+        $clientExpected = getenv("MOODLE_JWT_CLIENT_ID");
+        if ($client != $clientExpected)
+            return;
+
+        // echo('Payload Encoded: ' . print_r($payloadEncoded, true));
+        // echo('Payload Decoded: ' . print_r($payload, true));
 
         $userUsername = $payload->preferred_username;
         $userExists = $DB->record_exists('user', ["username" => $userUsername]);
 
-        echo('User Exists?: ' . print_r($userExists, true));
+        // echo('User Exists?: ' . print_r($userExists, true));
 
         if (!$userExists) {
             $user = create_user_record($userUsername, null, "jwt");
@@ -102,7 +116,7 @@ class auth_plugin_jwt extends auth_plugin_base {
 
             $DB->update_record("user", $user);
 
-            echo('User Created: ' . print_r($user, true));
+            // echo('User Created: ' . print_r($user, true));
         }
 
         $updatedUser = $DB->get_record("user", ["username" => $userUsername, "auth" => "jwt"]);
