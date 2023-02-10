@@ -61,7 +61,11 @@ class auth_plugin_jwt extends auth_plugin_base {
 
         $authtoken = null;
 
-        if (function_exists('apache_request_headers')) {
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authtoken = trim(substr($_SERVER['HTTP_AUTHORIZATION'], 7));
+        } else if (isset($_SERVER['Authorization'])) {
+            $authtoken = trim(substr($_SERVER['Authorization'], 7));
+        } else if (function_exists('apache_request_headers')) {
             $headers = apache_request_headers();
             if (isset($headers['Authorization'])) {
                 $authtoken = substr($headers['Authorization'], 7);
