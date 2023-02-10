@@ -60,23 +60,25 @@ class auth_plugin_jwt extends auth_plugin_base {
         global $CFG, $DB;
 
         $authtoken = null;
+        $authtokenRaw = null;
 
         if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            $authtoken = trim(substr($_SERVER['HTTP_AUTHORIZATION'], 7));
+            $authtokenRaw = $_SERVER['HTTP_AUTHORIZATION'];
         } else if (isset($_SERVER['Authorization'])) {
-            $authtoken = trim(substr($_SERVER['Authorization'], 7));
+            $authtokenRaw = $_SERVER['Authorization'];
         } else if (function_exists('apache_request_headers')) {
             $headers = apache_request_headers();
             if (isset($headers['Authorization'])) {
-                $authtoken = substr($headers['Authorization'], 7);
+                $authtokenRaw = $headers['Authorization'];
             }
         }
 
         // echo('Payload Decoded: ' . print_r($authtoken, true));
 
-        if (!isset($authtoken))
+        if (!isset($authtokenRaw))
             return;
-
+        
+        $authtoken = trim(substr($authtokenRaw, 7));
         $token_parts = explode('.', $authtoken);
 
         $headerEncoded = $token_parts[0];
