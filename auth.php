@@ -93,24 +93,26 @@ class auth_plugin_jwt extends auth_plugin_base {
         $issuer = $payload->iss;
         $client = $payload->azp;
 
-        $issuerExpected = getenv("MOODLE_JWT_ISSUER");
-        if ($issuer != $issuerExpected)
-            return;
-
-        $clientExpected = getenv("MOODLE_JWT_CLIENT_ID");
-        if ($client != $clientExpected)
-            return;
+        $checkIssuer = getenv("MOODLE_JWT_CHECK_ISSUER");
+        if (isset($checkIssuer) && $checkIssuer) {
+            $issuerExpected = getenv("MOODLE_JWT_ISSUER");
+            if ($issuer != $issuerExpected)
+                return;
+    
+            $clientExpected = getenv("MOODLE_JWT_CLIENT_ID");
+            if ($client != $clientExpected)
+                return;
+        }
 
         // echo('Payload Encoded: ' . print_r($payloadEncoded, true));
         // echo('Payload Decoded: ' . print_r($payload, true));
 
-        $userUsername = $payload->preferred_username;
-        $userExists = $DB->record_exists('user', ["username" => $userUsername]);
+        $userExists = $DB->record_exists('user', ["email" => $payload->email]);
 
         // echo('User Exists?: ' . print_r($userExists, true));
 
         if (!$userExists) {
-            $user = create_user_record($userUsername, null, "jwt");
+            $user = create_user_record($payload->preferred_username, null, "jwt");
 
             $user->email = $payload->email;
             $user->firstname = $payload->given_name;
@@ -125,7 +127,7 @@ class auth_plugin_jwt extends auth_plugin_base {
             // echo('User Created: ' . print_r($user, true));
         }
 
-        $updatedUser = $DB->get_record("user", ["username" => $userUsername, "auth" => "jwt"]);
+        $updatedUser = $DB->get_record("user", ["email" => $payload->email]);
 
         complete_user_login($updatedUser);
     }
