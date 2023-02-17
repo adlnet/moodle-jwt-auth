@@ -13,6 +13,7 @@ There is a straightforward issuer + client check, but that is it.
 
 Aside from importing the release zip through the Moodle admin page, your Moodle instance must also include two environment variables:
 
+- `MOODLE_JWT_CHECK_ISSUER`: Whether or not to check the JWT's issuer.
 - `MOODLE_JWT_ISSUER`: The authority issuing the expected JWTs.
 - `MOODLE_JWT_CLIENT`: The client ID for your SSO realm.
 
