@@ -93,16 +93,16 @@ class auth_plugin_jwt extends auth_plugin_base {
         $issuer = $payload->iss;
         $client = $payload->azp;
 
-        $checkIssuer = getenv("MOODLE_JWT_CHECK_ISSUER");
-        if (isset($checkIssuer) && $checkIssuer) {
-            $issuerExpected = getenv("MOODLE_JWT_ISSUER");
-            if ($issuer != $issuerExpected)
-                return;
+        // $checkIssuer = getenv("MOODLE_JWT_CHECK_ISSUER");
+        // if (isset($checkIssuer) && $checkIssuer) {
+        //     $issuerExpected = getenv("MOODLE_JWT_ISSUER");
+        //     if ($issuer != $issuerExpected)
+        //         return;
     
-            // $clientExpected = getenv("MOODLE_JWT_CLIENT_ID");
-            // if ($client != $clientExpected)
-            //     return;
-        }
+        //     // $clientExpected = getenv("MOODLE_JWT_CLIENT_ID");
+        //     // if ($client != $clientExpected)
+        //     //     return;
+        // }
 
         // echo('Payload Encoded: ' . print_r($payloadEncoded, true));
         // echo('Payload Decoded: ' . print_r($payload, true));
@@ -129,10 +129,10 @@ class auth_plugin_jwt extends auth_plugin_base {
 
         $updatedUser = $DB->get_record("user", ["email" => $payload->email]);
 
-        $shouldBeAdmin = in_array("ADMIN", $payload->{"group-simple"});
-        if ($shouldBeAdmin) {
-            $this->ensure_user_is_site_admin($updatedUser);
-        }
+        // $shouldBeAdmin = in_array("ADMIN", $payload->{"group-simple"});
+        // if ($shouldBeAdmin) {
+        //     $this->ensure_user_is_site_admin($updatedUser);
+        // }
 
         complete_user_login($updatedUser);
     }
