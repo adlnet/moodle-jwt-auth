@@ -99,9 +99,9 @@ class auth_plugin_jwt extends auth_plugin_base {
             if ($issuer != $issuerExpected)
                 return;
     
-            $clientExpected = getenv("MOODLE_JWT_CLIENT_ID");
-            if ($client != $clientExpected)
-                return;
+            // $clientExpected = getenv("MOODLE_JWT_CLIENT_ID");
+            // if ($client != $clientExpected)
+            //     return;
         }
 
         // echo('Payload Encoded: ' . print_r($payloadEncoded, true));
@@ -129,7 +129,29 @@ class auth_plugin_jwt extends auth_plugin_base {
 
         $updatedUser = $DB->get_record("user", ["email" => $payload->email]);
 
+        $shouldBeAdmin = in_array("ADMIN", $payload->{"group-simple"});
+        if ($shouldBeAdmin) {
+            $this->ensure_user_is_site_admin($updatedUser);
+        }
+
         complete_user_login($updatedUser);
+    }
+
+    private function ensure_user_is_site_admin($user) {
+
+        global $DB;
+
+        $adminRecord = $DB->get_record('config', ["name" => "siteadmins"]);
+        $siteAdmins = explode(",", $adminRecord->value);
+
+        $alreadyAdmin = in_array(strval($user->id), $siteAdmins);
+        if ($alreadyAdmin) 
+            return;
+
+        array_push($siteAdmins, $user->id);
+        $adminRecord->value = implode(",", $siteAdmins);
+
+        $DB->update_record("config", $adminRecord);
     }
 
     private function parse_jwt_component($encodedStr) {
