@@ -62,16 +62,34 @@ class auth_plugin_jwt extends auth_plugin_base {
         $authtoken = null;
         $authtokenRaw = null;
 
-        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            $authtokenRaw = $_SERVER['HTTP_AUTHORIZATION'];
-        } else if (isset($_SERVER['Authorization'])) {
-            $authtokenRaw = $_SERVER['Authorization'];
-        } else if (function_exists('apache_request_headers')) {
+        if (function_exists('apache_request_headers')) {
             $headers = apache_request_headers();
             if (isset($headers['Authorization'])) {
                 $authtokenRaw = $headers['Authorization'];
             }
         }
+
+        // echo('Checking for payload ... ');
+
+        if (!isset($authtokenRaw)) {
+            if (isset($_SERVER['Authorization'])) {
+                $authtokenRaw = $_SERVER['Authorization'];
+            }
+            else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+                $authtokenRaw = $_SERVER['HTTP_AUTHORIZATION'];
+            } 
+        }
+
+        // if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        //     $authtokenRaw = $_SERVER['HTTP_AUTHORIZATION'];
+        // } else if (isset($_SERVER['Authorization'])) {
+        //     $authtokenRaw = $_SERVER['Authorization'];
+        // } else if (function_exists('apache_request_headers')) {
+        //     $headers = apache_request_headers();
+        //     if (isset($headers['Authorization'])) {
+        //         $authtokenRaw = $headers['Authorization'];
+        //     }
+        // }
 
         // echo('Payload Decoded: ' . print_r($authtoken, true));
 
