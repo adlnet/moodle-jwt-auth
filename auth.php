@@ -147,7 +147,9 @@ class auth_plugin_jwt extends auth_plugin_base {
         $userExists = $DB->record_exists('user', ["email" => $payload->email]);
 
         if (!$userExists) {
-            $user = create_user_record($payload->preferred_username, null, "jwt");
+
+            $username = $this->get_expected_username($payload);
+            $user = create_user_record($username, null, "jwt");
 
             $user->email = $payload->email;
             $user->firstname = $payload->given_name;
@@ -159,6 +161,16 @@ class auth_plugin_jwt extends auth_plugin_base {
 
             $DB->update_record("user", $user);
         }
+        else {
+            $existingUser = $DB->get_record("user", ["email" => $payload->email]);
+            $expectedUsername = $this->get_expected_username($payload);
+
+            if ($existingUser->username != $expectedUsername) {
+                $existingUser->username = $expectedUsername;
+
+                $DB->update_record("user", $existingUser);
+            }
+        }
 
         $updatedUser = $DB->get_record("user", ["email" => $payload->email]);
 
@@ -167,6 +179,54 @@ class auth_plugin_jwt extends auth_plugin_base {
          * so if that doesn't happen then something else failed above.
          */
         complete_user_login($updatedUser);
+    }
+
+    /**
+     * Use the information provided in the cert + environment variables to determine
+     * the expected username for this account.
+     * 
+     * If nothing is set to manipulate this, it will return the 'preferred_username'
+     * property with no modifications.
+     */
+    private function get_expected_username($cert) {
+        $usernamePropertyRaw = $this->get_username_property($cert);
+        $usernameExpected = $this->get_trimmed_username($usernamePropertyRaw);
+
+        return $usernameExpected;
+    }
+
+    /**
+     * Optionally use a different property for the username, controlled through
+     * an environment variable.  
+     * 
+     * Ignored if not set, will use the standard 'preferred_username' instead.
+     */
+    private function get_username_property($cert) {
+        $usernameProperty = getenv("MOODLE_JWT_USERNAME_PROPERTY");
+        
+        if (property_exists($cert, $usernameProperty)) {
+            return $cert->$usernameProperty;
+        }
+        else {
+            return $cert->preferred_username;
+        }
+    }
+
+    /**
+     * Optionally remove characters from the username, controlled through
+     * an environment variable.  
+     * 
+     * Ignored if not set.
+     */
+    private function get_trimmed_username($usernameRaw) {
+        $removal = getenv("MOODLE_JWT_USERNAME_REGEX_REMOVAL");
+        if (isset($removal)) {
+            $pattern = "/" . $removal . "/";
+            return preg_replace($pattern, "", $usernameRaw);
+        }
+        else {
+            return $usernameRaw;
+        }
     }
 
     private function ensure_user_is_site_admin($user) {

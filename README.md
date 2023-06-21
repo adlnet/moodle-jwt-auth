@@ -17,4 +17,9 @@ Aside from importing the release zip through the Moodle admin page, your Moodle 
 - `MOODLE_JWT_ISSUER`: The authority issuing the expected JWTs.
 - `MOODLE_JWT_CLIENT`: The client ID for your SSO realm.
 
+The plugin can also handle username assignment, but this is usually for special situation where you'd like a specific property to be used.  Additionally, special characters can be removed through a regular expression.
+
+- `MOODLE_JWT_USERNAME_PROPERTY`: The property you'd like to use for the username.
+- `MOODLE_JWT_USERNAME_REGEX_REMOVAL`: The expression to match characters for removal from the username.
+
 Once those are in-place, the protected instance should be capable of creating users and logging them in automatically.  Automatic enrolment is a different topic, and there are existing plugins to handle that etc.
