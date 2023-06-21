@@ -11,10 +11,11 @@ There is a straightforward issuer + client check, but that is it.
 
 ## Installation
 
-Aside from importing the release zip through the Moodle admin page, your Moodle instance must also include two environment variables:
+Aside from importing the release zip through the Moodle admin page, your Moodle instance **should** also include environment variables for confirming the JWT values:
 
-- `MOODLE_JWT_CHECK_ISSUER`: Whether or not to check the JWT's issuer.
+- `MOODLE_JWT_CHECK_ISSUER`: Whether to check the JWT's issuer.
 - `MOODLE_JWT_ISSUER`: The authority issuing the expected JWTs.
+- `MOODLE_JWT_CHECK_CLIENT`: Whether to check the JWT's client.
 - `MOODLE_JWT_CLIENT`: The client ID for your SSO realm.
 
 The plugin can also handle username assignment, but this is usually for special situation where you'd like a specific property to be used.  Additionally, special characters can be removed through a regular expression.
