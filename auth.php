@@ -189,10 +189,52 @@ class auth_plugin_jwt extends auth_plugin_base {
      * property with no modifications.
      */
     private function get_expected_username($cert) {
-        $usernamePropertyRaw = $this->get_username_property($cert);
-        $usernameExpected = $this->get_trimmed_username($usernamePropertyRaw);
 
-        return $usernameExpected;
+        $envUseEDIPI = getenv("MOODLE_JWT_USE_EDIPI_NUMBER");
+        $envEDIPIProperty = getenv("MOODLE_JWT_EDIPI_PROPERTY");
+
+        $useEDIPI = isset($envUseEDIPI) && strcasecmp($envUseEDIPI, "true");
+        $configuredForEDIPI =  isset($envEDIPIProperty);
+
+        if ($useEDIPI && $configuredForEDIPI) {
+            $edipiNumber = $this->get_edipi_number($cert, $envEDIPIProperty);
+            $foundEDIPI = !is_null($edipiNumber);
+
+            if ($foundEDIPI) {
+                return $edipiNumber;
+            }
+        }
+        
+        $envCustomProperty = getenv("MOODLE_JWT_USERNAME_PROPERTY");
+        
+        $useCustomProperty = isset($envCustomProperty);
+        $hasCustomProperty = property_exists($cert, $envCustomProperty);
+
+        if ($useCustomProperty && $hasCustomProperty) {
+            return $cert->$envCustomProperty;
+        }
+
+        return $this->get_default_username($cert);
+    }
+
+    /**
+     * Parses a given property of the cert for an EDIPI number.
+     * 
+     * This will return the default username
+     */
+    private function get_edipi_number($cert, $edipiProperty) {
+        $edipiRaw = $cert->$edipiProperty;
+        $edipiParts = explode(".", $edipiRaw);
+        $edipiLastPart = end($edipiParts);
+
+        $edipiNumber = preg_replace("/[^0-9]/", "", $edipiLastPart);
+        $hasCorrectLength = strlen($edipiNumber) == 10;
+
+        if ($hasCorrectLength) {
+            return $edipiNumber;
+        }
+
+        return null;
     }
 
     /**
@@ -201,49 +243,8 @@ class auth_plugin_jwt extends auth_plugin_base {
      * 
      * Ignored if not set, will use the standard 'preferred_username' instead.
      */
-    private function get_username_property($cert) {
-        $usernameProperty = getenv("MOODLE_JWT_USERNAME_PROPERTY");
-        
-        if (property_exists($cert, $usernameProperty)) {
-            return $cert->$usernameProperty;
-        }
-        else {
-            return $cert->preferred_username;
-        }
-    }
-
-    /**
-     * Optionally remove characters from the username, controlled through
-     * an environment variable.  
-     * 
-     * Ignored if not set.
-     */
-    private function get_trimmed_username($usernameRaw) {
-        $removal = getenv("MOODLE_JWT_USERNAME_REGEX_REMOVAL");
-        if (isset($removal)) {
-            $pattern = "/" . $removal . "/";
-            return preg_replace($pattern, "", $usernameRaw);
-        }
-        else {
-            return $usernameRaw;
-        }
-    }
-
-    private function ensure_user_is_site_admin($user) {
-
-        global $DB;
-
-        $adminRecord = $DB->get_record('config', ["name" => "siteadmins"]);
-        $siteAdmins = explode(",", $adminRecord->value);
-
-        $alreadyAdmin = in_array(strval($user->id), $siteAdmins);
-        if ($alreadyAdmin) 
-            return;
-
-        array_push($siteAdmins, $user->id);
-        $adminRecord->value = implode(",", $siteAdmins);
-
-        $DB->update_record("config", $adminRecord);
+    private function get_default_username($cert) {
+        return $cert->preferred_username;
     }
 
     private function parse_jwt_component($encodedStr) {
@@ -260,6 +261,26 @@ class auth_plugin_jwt extends auth_plugin_base {
         $b = str_replace('_', '/', $a);
 
         return base64_decode($b);
+    }
+
+    /**
+     * Unused atm.
+     */
+    private function ensure_user_is_site_admin($user) {
+
+        global $DB;
+
+        $adminRecord = $DB->get_record('config', ["name" => "siteadmins"]);
+        $siteAdmins = explode(",", $adminRecord->value);
+
+        $alreadyAdmin = in_array(strval($user->id), $siteAdmins);
+        if ($alreadyAdmin) 
+            return;
+
+        array_push($siteAdmins, $user->id);
+        $adminRecord->value = implode(",", $siteAdmins);
+
+        $DB->update_record("config", $adminRecord);
     }
 
     /**
