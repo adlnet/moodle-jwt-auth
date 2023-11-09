@@ -164,8 +164,8 @@ class auth_plugin_jwt extends auth_plugin_base {
                 /**
                  * The "salt" here will simply be a character block to satisfy password reqs.
                  * 
-                 * The Nonce, Issuer, and JWT ID are all relatively complex, so we will simply
-                 * concatenate them with the requirements to ensure Moodle accepts it.
+                 * The Nonce, Issuer, and JWT ID are all relatively obscure, so the idea is to
+                 * concatenate them with the requirements - ensure Moodle accepts it.
                  */
                 $requirementSalt = "aA_12345678";
                 $password = $payload->iss . $payload->sub . $payload->nonce . $requirementSalt;
