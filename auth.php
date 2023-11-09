@@ -164,11 +164,28 @@ class auth_plugin_jwt extends auth_plugin_base {
                 /**
                  * The "salt" here will simply be a character block to satisfy password reqs.
                  * 
-                 * The Nonce, Issuer, and JWT ID are all relatively obscure, so the idea is to
-                 * concatenate them with the requirements - ensure Moodle accepts it.
+                 * There are several fairly random properties to choose from, but we will leave
+                 * the specification to the configuration folks.  If not specified, then we will
+                 * use JWT-standard properties in their place.
                  */
                 $requirementSalt = "aA_12345678";
-                $password = $payload->iss . $payload->sub . $payload->nonce . $requirementSalt;
+
+                $envPropertyFirst = getenv("MOODLE_JWT_ASSIGN_RANDOM_PASSWORD_PROPERTY_FIRST");
+                $envPropertySecond = getenv("MOODLE_JWT_ASSIGN_RANDOM_PASSWORD_PROPERTY_SECOND");
+
+                $firstChunk = $payload->sub;
+                $secondChunk = $payload->iss;
+
+                if (isset($envPropertyFirst) && $envPropertyFirst) {
+                    $firstChunk = $payload->$envPropertyFirst;
+                }
+
+                if (isset($envPropertySecond) && $envPropertySecond) {
+                    $secondChunk = $payload->$envPropertySecond;
+                }
+
+
+                $password = time() . $firstChunk . $secondChunk . $requirementSalt;
             }
 
             $user = create_user_record($username, $password, "jwt");
