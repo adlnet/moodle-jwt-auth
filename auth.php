@@ -149,7 +149,29 @@ class auth_plugin_jwt extends auth_plugin_base {
         if (!$userExists) {
 
             $username = $this->get_expected_username($payload);
-            $user = create_user_record($username, null, "jwt");
+            $password = null;
+
+            /**
+             * As of Moodle 4.3, created user passwords can no longer be null.
+             * 
+             * Since this auth method does not allow manual logins anyway, the
+             * approach will be to simply create a pseudo-randomized password
+             * for this account, which will be blocked from manual entry anyway.
+             */
+            $assignRandomPassword = getenv("MOODLE_JWT_ASSIGN_RANDOM_PASSWORD");
+            if (isset($assignRandomPassword) && $assignRandomPassword) {
+
+                /**
+                 * The "salt" here will simply be a character block to satisfy password reqs.
+                 * 
+                 * The Nonce, Issuer, and JWT ID are all relatively complex, so we will simply
+                 * concatenate them with the requirements to ensure Moodle accepts it.
+                 */
+                $requirementSalt = "aA_12345678";
+                $password = $payload->iss . $payload->sub . $payload->nonce . $requirementSalt;
+            }
+
+            $user = create_user_record($username, $password, "jwt");
 
             $user->email = $payload->email;
             $user->firstname = $payload->given_name;
