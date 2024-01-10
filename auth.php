@@ -37,6 +37,8 @@ class auth_plugin_jwt extends auth_plugin_base {
     public function __construct() {
         $this->authtype = 'jwt';
         $this->config = get_config('auth_jwt');
+
+        $this->config->field_lock_email = "locked";
     }
 
     /**
