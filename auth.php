@@ -231,7 +231,7 @@ class auth_plugin_jwt extends auth_plugin_base {
      */
     private function get_expected_username($cert) {
 
-        $envUseEDIPI = getenv("MOODLE_JWT_USE_EDIPI_NUMBER");
+        $envUseEDIPI = getenv("MOODLE_JWT_USE_EDIPI");
         $envEDIPIProperty = getenv("MOODLE_JWT_EDIPI_PROPERTY");
 
         $useEDIPI = isset($envUseEDIPI) && strcasecmp($envUseEDIPI, "true");
