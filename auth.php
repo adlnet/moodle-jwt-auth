@@ -308,7 +308,7 @@ class auth_plugin_jwt extends auth_plugin_base {
         $value = getenv($variableName);
         $exists = $value != false;
 
-        return $exists && strcasecmp($value, "true");
+        return $exists && (strcasecmp($value, "true") == 0);
     }
 
     /**
