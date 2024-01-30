@@ -264,7 +264,17 @@ class auth_plugin_jwt extends auth_plugin_base {
      * This will return the default username
      */
     private function get_edipi_number($cert, $edipiProperty) {
+
+        $certHasProperty = property_exists($cert, $edipiProperty);
+        if ($certHasProperty == false)
+            return null;
+
         $edipiRaw = $cert->$edipiProperty;
+        
+        $edipiParsedAsString = is_string($edipiRaw);
+        if ($edipiParsedAsString == false)
+            return null;
+
         $edipiParts = explode(".", $edipiRaw);
         $edipiLastPart = end($edipiParts);
 
