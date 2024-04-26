@@ -74,8 +74,7 @@ class auth_plugin_jwt extends auth_plugin_base {
     private function attempt_jwt_login() {
         global $CFG, $DB;
 
-        $authtoken = null;
-        $authtokenRaw = null;
+        $authHeader = null;
 
         /**
          * Most deployments will be through Apache, at least for ADL, so
@@ -84,7 +83,7 @@ class auth_plugin_jwt extends auth_plugin_base {
         if (function_exists('apache_request_headers')) {
             $headers = apache_request_headers();
             if (isset($headers['Authorization'])) {
-                $authtokenRaw = $headers['Authorization'];
+                $authHeader = $headers['Authorization'];
             }
         }
 
@@ -93,26 +92,21 @@ class auth_plugin_jwt extends auth_plugin_base {
          * will miss the previous check, so we can also check the older syntax
          * if necessary.
          */
-        if (!isset($authtokenRaw)) {
+        if (!isset($authHeader)) {
             if (isset($_SERVER['Authorization'])) {
-                $authtokenRaw = $_SERVER['Authorization'];
+                $authHeader = $_SERVER['Authorization'];
             }
             else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-                $authtokenRaw = $_SERVER['HTTP_AUTHORIZATION'];
+                $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
             } 
         }
 
-        if (!isset($authtokenRaw))
+        if (!isset($authHeader))
             return;
         
-        $authtoken = trim(substr($authtokenRaw, 7));
-        $token_parts = explode('.', $authtoken);
-
-        $headerEncoded = $token_parts[0];
-        $payloadEncoded = $token_parts[1];
-        $signatureEncoded = $token_parts[2];
-
-        $payload = $this->parse_jwt_component($payloadEncoded);
+        $payload = $this->parse_jwt_component($authHeader);
+        if (is_null($payload))
+            return;
         
         /**
          * We allow the environment to specify whether to perform an issuer check.
@@ -233,8 +227,8 @@ class auth_plugin_jwt extends auth_plugin_base {
     private function get_expected_username($cert) {
 
         $envEDIPIProperty = getenv("MOODLE_JWT_EDIPI_PROPERTY");
-
         $useEDIPI = $this->has_env_bool("MOODLE_JWT_USE_EDIPI");
+
         $configuredForEDIPI =  $envEDIPIProperty != false;
 
         if ($useEDIPI && $configuredForEDIPI) {
@@ -247,13 +241,16 @@ class auth_plugin_jwt extends auth_plugin_base {
         }
         
         $envCustomProperty = getenv("MOODLE_JWT_USERNAME_PROPERTY");
-        
         $useCustomProperty = $envCustomProperty != false;
-        $hasCustomProperty = property_exists($cert, $envCustomProperty);
-
-        if ($useCustomProperty && $hasCustomProperty) {
-            return $cert->$envCustomProperty;
+        
+        if ($useCustomProperty) {
+            
+            $hasCustomProperty = property_exists($cert, $envCustomProperty);
+            if ($hasCustomProperty) {
+                return $cert->$envCustomProperty;
+            }
         }
+
 
         return $this->get_default_username($cert);
     }
@@ -298,11 +295,24 @@ class auth_plugin_jwt extends auth_plugin_base {
         return $cert->preferred_username;
     }
 
-    private function parse_jwt_component($encodedStr) {
+    private function parse_jwt_component($authHeader) {
 
-        $decodedStr = $this->decode_base_64($encodedStr);
+        if (strlen($authHeader) < 7)
+            return null;
+
+        $authtoken = trim(substr($authHeader, 7));
+        $token_parts = explode('.', $authtoken);
+
+        if (count($token_parts) != 3)
+            return null;
+    
+        $headerEncoded = $token_parts[0];
+        $payloadEncoded = $token_parts[1];
+        $signatureEncoded = $token_parts[2];
+        
+        $decodedStr = $this->decode_base_64($payloadEncoded);
         $jsonObj = json_decode($decodedStr);
-
+    
         return $jsonObj;
     }
 
