@@ -84,6 +84,8 @@ class auth_plugin_jwt extends auth_plugin_base {
             $headers = apache_request_headers();
             if (isset($headers['Authorization'])) {
                 $authHeader = $headers['Authorization'];
+            } else if (isset($headers['authorization'])) {
+                $authHeader = $headers['authorization'];
             }
         }
 
@@ -96,21 +98,24 @@ class auth_plugin_jwt extends auth_plugin_base {
             if (isset($_SERVER['Authorization'])) {
                 $authHeader = $_SERVER['Authorization'];
             }
+            else if (isset($_SERVER['authorization'])) {
+                $authHeader = $_SERVER['authorization'];
+            }
             else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
                 $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
-            } 
+            }
         }
 
         if (!isset($authHeader))
             return;
-        
+
         $payload = $this->parse_jwt_component($authHeader);
         if (is_null($payload))
             return;
-        
+
         /**
          * We allow the environment to specify whether to perform an issuer check.
-         * 
+         *
          * For some environments, this will be necessary, but for ADL's P1 deployment
          * this doesn't add any extra security.
          */
