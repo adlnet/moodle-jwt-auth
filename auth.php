@@ -19,6 +19,7 @@
  *
  * @package auth_jwt
  * @author Trey Hayden <trey.hayden.ctr@adlnet.gov>
+ *         Milt Reder <milt@yetanalytics.com>
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
  */
 
@@ -69,6 +70,36 @@ class auth_plugin_jwt extends auth_plugin_base {
      */
     public function loginpage_hook() {
         $this->attempt_jwt_login();
+    }
+
+    private function generateRandomPassword($length = 12) {
+        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+';
+        $charactersLength = strlen($characters);
+        $randomPassword = '';
+        for ($i = 0; $i < $length; $i++) {
+            $randomPassword .= $characters[random_int(0, $charactersLength - 1)];
+        }
+
+        // Ensure the password meets Moodle's requirements
+        // At least one lowercase letter
+        if (!preg_match('/[a-z]/', $randomPassword)) {
+            $randomPassword .= 'a';
+        }
+        // At least one uppercase letter
+        if (!preg_match('/[A-Z]/', $randomPassword)) {
+            $randomPassword .= 'A';
+        }
+        // At least one digit
+        if (!preg_match('/\d/', $randomPassword)) {
+            $randomPassword .= '1';
+        }
+        // At least one special character
+        if (!preg_match('/[\W_]/', $randomPassword)) {
+            $randomPassword .= '!';
+        }
+
+        // Shuffle the password to ensure randomness
+        return str_shuffle($randomPassword);
     }
 
     private function attempt_jwt_login() {
@@ -155,34 +186,9 @@ class auth_plugin_jwt extends auth_plugin_base {
             if ($this->has_env_bool("MOODLE_JWT_ASSIGN_RANDOM_PASSWORD")) {
 
                 /**
-                 * The "salt" here will simply be a character block to satisfy password reqs.
-                 * 
-                 * There are several fairly random properties to choose from, but we will leave
-                 * the specification to the configuration folks.  If not specified, then we will
-                 * use JWT-standard properties in their place.
+                 * Assign a random password that meets Moodle's requirements
                  */
-                $requirementSalt = "aA_12345678";
-
-                $envPropertyFirst = getenv("MOODLE_JWT_ASSIGN_RANDOM_PASSWORD_PROPERTY_FIRST");
-                $envPropertySecond = getenv("MOODLE_JWT_ASSIGN_RANDOM_PASSWORD_PROPERTY_SECOND");
-
-                $firstChunk = $payload->sub;
-                $secondChunk = $payload->iss;
-
-                if ($envPropertyFirst != false) {
-                    if (property_exists($payload, $envPropertyFirst)) {
-                        $firstChunk = $payload->$envPropertyFirst;
-                    }
-                }
-
-                if ($envPropertySecond != false) {
-                    if (property_exists($payload, $envPropertySecond)) {
-                        $secondChunk = $payload->$envPropertySecond;
-                    }
-                }
-
-
-                $password = time() . $firstChunk . $secondChunk . $requirementSalt;
+                $password = $this->generateRandomPassword();
             }
 
             $user = create_user_record($username, $password, "jwt");
