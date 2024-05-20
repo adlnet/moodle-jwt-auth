@@ -17,6 +17,7 @@ Aside from importing the release zip through the Moodle admin page, your Moodle 
 - `MOODLE_JWT_ISSUER`: The authority issuing the expected JWTs.
 - `MOODLE_JWT_CHECK_CLIENT`: Whether to check the JWT's client.
 - `MOODLE_JWT_CLIENT`: The client ID for your SSO realm.
+- `MOODLE_JWT_ASSIGN_RANDOM_PASSWORD`: If `true` will generate a random local password for the user, required by Moodle 4.3 and up.
 
 The plugin can also handle username assignment, but this is usually for special situation where you'd like a specific property to be used.  Additionally, special characters can be removed through a regular expression.
 
