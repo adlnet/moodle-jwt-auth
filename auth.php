@@ -74,37 +74,19 @@ class auth_plugin_jwt extends auth_plugin_base {
     private function attempt_jwt_login() {
         global $CFG, $DB;
 
+        $queries = array();
+        parse_str($_SERVER['QUERY_STRING'], $queries);
+
         $authHeader = null;
 
-        /**
-         * Most deployments will be through Apache, at least for ADL, so
-         * we can leverage a convenient getter to help out.
-         */
-        if (function_exists('apache_request_headers')) {
-            $headers = apache_request_headers();
-            if (isset($headers['Authorization'])) {
-                $authHeader = $headers['Authorization'];
-            }
+        if (array_key_exists('jwt', $queries)) {
+            $authHeader = $queries['jwt'];
         }
 
-        /**
-         * Older versions of Moodle and those without an Apache server base
-         * will miss the previous check, so we can also check the older syntax
-         * if necessary.
-         */
-        if (!isset($authHeader)) {
-            if (isset($_SERVER['Authorization'])) {
-                $authHeader = $_SERVER['Authorization'];
-            }
-            else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-                $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
-            } 
-        }
-
-        if (!isset($authHeader))
+        if (!isset($authHeader)) 
             return;
-        
-        $payload = $this->parse_jwt_component($authHeader);
+
+        $payload = $this->parse_jwt_component($authHeader, $CFG->jwtSecretKey);
         if (is_null($payload))
             return;
         
@@ -136,76 +118,6 @@ class auth_plugin_jwt extends auth_plugin_base {
 
             if ($client != $clientExpected)
                 return;
-        }
-
-        $userExists = $DB->record_exists('user', ["email" => $payload->email]);
-
-        if (!$userExists) {
-
-            $username = $this->get_expected_username($payload);
-            $password = null;
-
-            /**
-             * As of Moodle 4.3, created user passwords can no longer be null.
-             * 
-             * Since this auth method does not allow manual logins anyway, the
-             * approach will be to simply create a pseudo-randomized password
-             * for this account, which will be blocked from manual entry anyway.
-             */
-            if ($this->has_env_bool("MOODLE_JWT_ASSIGN_RANDOM_PASSWORD")) {
-
-                /**
-                 * The "salt" here will simply be a character block to satisfy password reqs.
-                 * 
-                 * There are several fairly random properties to choose from, but we will leave
-                 * the specification to the configuration folks.  If not specified, then we will
-                 * use JWT-standard properties in their place.
-                 */
-                $requirementSalt = "aA_12345678";
-
-                $envPropertyFirst = getenv("MOODLE_JWT_ASSIGN_RANDOM_PASSWORD_PROPERTY_FIRST");
-                $envPropertySecond = getenv("MOODLE_JWT_ASSIGN_RANDOM_PASSWORD_PROPERTY_SECOND");
-
-                $firstChunk = $payload->sub;
-                $secondChunk = $payload->iss;
-
-                if ($envPropertyFirst != false) {
-                    if (property_exists($payload, $envPropertyFirst)) {
-                        $firstChunk = $payload->$envPropertyFirst;
-                    }
-                }
-
-                if ($envPropertySecond != false) {
-                    if (property_exists($payload, $envPropertySecond)) {
-                        $secondChunk = $payload->$envPropertySecond;
-                    }
-                }
-
-
-                $password = time() . $firstChunk . $secondChunk . $requirementSalt;
-            }
-
-            $user = create_user_record($username, $password, "jwt");
-
-            $user->email = $payload->email;
-            $user->firstname = $payload->given_name;
-            $user->lastname = $payload->family_name;
-            $user->mnethostid = $CFG->mnet_localhost_id;
-
-            $user->confirmed = true;
-            $user->policyagreed = true;
-
-            $DB->update_record("user", $user);
-        }
-        else {
-            $existingUser = $DB->get_record("user", ["email" => $payload->email]);
-            $expectedUsername = $this->get_expected_username($payload);
-
-            if ($existingUser->username != $expectedUsername) {
-                $existingUser->username = $expectedUsername;
-
-                $DB->update_record("user", $existingUser);
-            }
         }
 
         $updatedUser = $DB->get_record("user", ["email" => $payload->email]);
@@ -295,25 +207,36 @@ class auth_plugin_jwt extends auth_plugin_base {
         return $cert->preferred_username;
     }
 
-    private function parse_jwt_component($authHeader) {
+    private function parse_jwt_component($authHeader, $secretKey="9TwZDjnIoFx0Vbf42rIdMumPRqa") {
+        if (strlen($authHeader) < 7) {
+          return null;
+        }
 
-        if (strlen($authHeader) < 7)
-            return null;
-
-        $authtoken = trim(substr($authHeader, 7));
+        $authtoken = $authHeader;
         $token_parts = explode('.', $authtoken);
+      
+        if (count($token_parts) != 3) {
+          return null;
+        }
 
-        if (count($token_parts) != 3)
-            return null;
-    
         $headerEncoded = $token_parts[0];
         $payloadEncoded = $token_parts[1];
         $signatureEncoded = $token_parts[2];
+      
+        // Base64 decode header and payload (less secure)
+        $payload = json_decode($this->decode_base_64($payloadEncoded));
+
+        if ($secretKey) {
+            // Manual signature verification (less secure)
+            $expectedSignature = hash_hmac('sha256', implode('.', [$headerEncoded, $payloadEncoded]), $secretKey, true);
+
+            if ($expectedSignature !== $this->decode_base_64($signatureEncoded)) {
+                return null; // Invalid signature
+            }
+        }
         
-        $decodedStr = $this->decode_base_64($payloadEncoded);
-        $jsonObj = json_decode($decodedStr);
-    
-        return $jsonObj;
+      
+        return $payload;
     }
 
     private function decode_base_64($encodedStr) {
