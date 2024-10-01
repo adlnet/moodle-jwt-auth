@@ -35,27 +35,38 @@ $jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI
 
 function doesPayloadSatisfyRoleRequirement($payload) {
 	
-    $roleField = getenv('MOODLE_JWT_ROLE_FIELD');      
-    $requiredRole = getenv('MOODLE_JWT_REQUIRED_ROLE');
-    
-    if (empty($roleField) || empty($requiredRole)) {
-        return true;
-    }
+	$checkForRole = getenv('MOODLE_JWT_USE_ROLE_CHECK'); 
+	$roleField = getenv('MOODLE_JWT_ROLE_FIELD');      
+	$requiredRole = getenv('MOODLE_JWT_REQUIRED_ROLE');
 
-    if (isset($payload->$roleField) && is_array($payload->$roleField)) {
-        return in_array($requiredRole, $payload->$roleField);
-    }
+	if (empty($checkForRole) || $checkForRole != "true") {
+		return true;
+	}
 
-    // Return false if the field is not present or the role is not found
-    return false;
+	if (empty($roleField) || empty($requiredRole)) {
+		return false;
+	}
+
+	if (isset($payload->$roleField) && is_array($payload->$roleField)) {
+		return in_array($requiredRole, $payload->$roleField);
+	}
+
+	// Return false if the field is not present or the role is not found
+	return false;
 }
 
 $payloadWithRole = (object)[
     'roles' => ['admin', 'editor', 'user']
 ];
 
+putenv("MOODLE_JWT_USE_ROLE_CHECK=");
 echo "EXPECTING SUCCESS ...";
 echo true == doesPayloadSatisfyRoleRequirement($payloadWithRole);
+echo "\n";
+
+putenv("MOODLE_JWT_USE_ROLE_CHECK=true");
+echo "EXPECTING FAILURE ...";
+echo false == doesPayloadSatisfyRoleRequirement($payloadWithRole);
 echo "\n";
 
 echo "EXPECTING FAILURE ...";

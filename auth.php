@@ -108,6 +108,10 @@ class auth_plugin_jwt extends auth_plugin_base {
         if (is_null($payload))
             return;
         
+        $satisfiesRoleRequirement = doesPayloadSatisfyRoleRequirement($payload);
+        if ($satisfiesRoleRequirement == false)
+            return;
+
         /**
          * We allow the environment to specify whether to perform an issuer check.
          * 
@@ -215,6 +219,39 @@ class auth_plugin_jwt extends auth_plugin_base {
          * so if that doesn't happen then something else failed above.
          */
         complete_user_login($updatedUser);
+    }
+
+    /**
+     * Check whether a parsed JWT payload satisfies the environmental role checks.
+     * 
+     * This will require that the following two values are specified:
+     *      
+     *      1. MOODLE_JWT_CHECK_FOR_ROLE: Whether to use this check, expects string `true`.
+     *      2. MOODLE_JWT_REQUIRED_ROLE: The role to require before allowing logins.
+     *      3. MOODLE_JWT_ROLE_FIELD: The field to check for the specified role.
+     * 
+     * If either of these are not present, then the user will be able to log in.
+     */
+    function doesPayloadSatisfyRoleRequirement($payload) {
+	
+        $checkForRole = getenv('MOODLE_JWT_USE_ROLE_CHECK'); 
+        $roleField = getenv('MOODLE_JWT_ROLE_FIELD');      
+        $requiredRole = getenv('MOODLE_JWT_REQUIRED_ROLE');
+
+        if (empty($checkForRole) || $checkForRole != "true") {
+            return true;
+        }
+
+        if (empty($roleField) || empty($requiredRole)) {
+            return false;
+        }
+    
+        if (isset($payload->$roleField) && is_array($payload->$roleField)) {
+            return in_array($requiredRole, $payload->$roleField);
+        }
+    
+        // Return false if the field is not present or the role is not found
+        return false;
     }
 
     /**
