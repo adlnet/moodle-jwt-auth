@@ -108,7 +108,7 @@ class auth_plugin_jwt extends auth_plugin_base {
         if (is_null($payload))
             return;
         
-        $satisfiesRoleRequirement = doesPayloadSatisfyRoleRequirement($payload);
+        $satisfiesRoleRequirement = $this->doesPayloadSatisfyRoleRequirement($payload);
         if ($satisfiesRoleRequirement == false)
             return;
 
