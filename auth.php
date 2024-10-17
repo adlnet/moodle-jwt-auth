@@ -237,7 +237,7 @@ class auth_plugin_jwt extends auth_plugin_base {
      * 
      * If either of these are not present, then the user will be able to log in.
      */
-    function doesPayloadSatisfyRoleRequirement($payload) {
+    private function doesPayloadSatisfyRoleRequirement($payload) {
 	
         $checkForRole = getenv('MOODLE_JWT_USE_ROLE_CHECK'); 
         $roleField = getenv('MOODLE_JWT_ROLE_FIELD');      
