@@ -146,6 +146,11 @@ class auth_plugin_jwt extends auth_plugin_base {
 
         if (!$userExists) {
 
+            $preventAutoUserCreation = $this->prevent_auto_user_creation();
+            if ($preventAutoUserCreation) {
+                return;
+            }
+
             $username = $this->get_expected_username($payload);
             $password = null;
 
@@ -359,6 +364,10 @@ class auth_plugin_jwt extends auth_plugin_base {
         $b = str_replace('_', '/', $a);
 
         return base64_decode($b);
+    }
+
+    private function prevent_auto_user_creation() {
+        return $this->has_env_bool("MOODLE_JWT_PREVENT_AUTO_USER_CREATION");
     }
 
     private function has_env_bool($variableName) {
